@@ -25,7 +25,7 @@ spec:
         app: lang-dev
     spec:
       containers:
-      - image: idock.daumkakao.io/peny_official/test-lang:v0.0.1
+      - image: test-lang:v0.0.3
         imagePullPolicy: Always
         name: lang-dev
         ports:

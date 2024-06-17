@@ -119,9 +119,4 @@ add_routes(app, chain, enable_feedback_endpoint=True)
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-# curl -X POST http://localhost:8000/invoke -H "Content-Type: application/json" -d '{"input": {"question": "why did Sue and Terry exciting", "chat_history": []}}'
-# curl -X POST http://localhost:8000/invoke -H "Content-Type: application/json" -d '{"input": {"question": "수현이 무슨 옷을 하려고 했지", "chat_history": []}}'
+    uvicorn.run(app, host="0.0.0.0", port=8080)
