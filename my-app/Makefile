@@ -1,8 +1,11 @@
 SHELL := /bin/bash
 REGISTRY ?= idock.daumkakao.io/peny_official
-VERSION ?= v0.0.1
+VERSION ?= v0.0.2
+OPENAI_API_KEY ?= ""
 
 .PHONY: build
 build:
+	@echo "update dependency lock"
+	poetry lock
 	@echo "build"
-	docker build --build-arg OPENAI_API_KEY --platform linux/amd64 -t $(REGISTRY)/test-lang:$(VERSION) -f deploy/Dockerfile .
+	docker build --no-cache --build-arg $(OPENAI_API_KEY) --platform linux/amd64 -t $(REGISTRY)/test-lang:$(VERSION) -f Dockerfile .
