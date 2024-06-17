@@ -16,6 +16,10 @@ COPY ./app ./app
 
 RUN poetry install --no-interaction --no-ansi
 
+ARG OPENAI_API_KEY=""
+
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
+
 EXPOSE 8080
 
 CMD exec uvicorn app.server:app --host 0.0.0.0 --port 8080

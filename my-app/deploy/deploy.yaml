@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kargo.9rum.cc/app-name: lang-dev
+    kargo.9rum.cc/phase: dev
+  labels:
+    app: lang-dev
+    name: lang-dev
+  name: lang-dev
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lang-dev
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: lang-dev
+    spec:
+      containers:
+      - image: idock.daumkakao.io/peny_official/test-lang:v0.0.1
+        imagePullPolicy: Always
+        name: lang-dev
+        ports:
+        - containerPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kargo.9rum.cc/app-name: lang-dev
+    kargo.9rum.cc/phase: dev
+  labels:
+  name: lang-dev
+  namespace: default
+spec:
+  rules:
+  - host: lang-dev.k8s.9rum.cc
+    http:
+      paths:
+      - backend:
+          service:
+            name: lang-dev
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - lang-dev.k8s.9rum.cc
+    secretName: k8s.9rum.cc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kargo.9rum.cc/app-name: lang-dev
+    kargo.9rum.cc/phase: dev
+  labels:
+    app: lang-dev
+  name: lang-dev
+  namespace: default
+spec:
+  ports:
+  - name: 8080-8080
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: lang-dev
+  type: ClusterIP
