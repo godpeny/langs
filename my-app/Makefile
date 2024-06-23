@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 REGISTRY ?= idock.daumkakao.io/peny_official
-VERSION ?= v0.0.3
+VERSION ?= v0.0.4
 OPENAI_API_KEY ?= "" # must be set!
 
 .PHONY: build
