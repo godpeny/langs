@@ -6,8 +6,8 @@ import operator
 from typing import Annotated, Sequence, TypedDict, Literal, List, Tuple
 import json
 from typing import List, Dict, Any, Union
-from fastapi import Depends, FastAPI, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from langchain_core.runnables import RunnableMap, RunnablePassthrough, RunnableLambda
 from langchain_core.messages import (
@@ -71,16 +71,6 @@ def _combine_documents(
     return document_separator.join(doc_strings)
 
 
-def _format_chat_history(chat_history: List[Tuple]) -> str:
-    """Format chat history into a string."""
-    buffer = ""
-    for dialogue_turn in chat_history:
-        human = "Human: " + dialogue_turn[0]
-        ai = "Assistant: " + dialogue_turn[1]
-        buffer += "\n" + "\n".join([human, ai])
-    return buffer
-
-
 class ChatHistory(BaseModel):
     """Chat history with the bot."""
     question: str
@@ -103,11 +93,9 @@ def emb_finder(
         date_list = date_str.split(", ")
         question = question.strip("()")
 
-        print("question : ", question)
         for date in date_list:
             # vector store of chat history.
             date = date.strip("''")
-            print("date : ", date)
             chat_db_path = f"./app/data/{date}"
             vectorstore = vector_store(chat_db_path)
             retriever = vectorstore.as_retriever(search_type="mmr")
@@ -137,14 +125,16 @@ def emb_finder(
         message
     )
 
+
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     sender: str
 
 
 """
-Data Nodes
+Nodes
 """
+
 def agent_node(state, agent, name):
     """Helper function to create a node for a given agent"""
     result = agent.invoke(state)
@@ -161,7 +151,7 @@ def agent_node(state, agent, name):
     }
 
 
-# Date Agent
+# Date Node
 current_date = datetime.now().strftime("%Y-%m-%d.txt")
 file_list = os.listdir('./app/data')
 prompt = ChatPromptTemplate.from_messages(
@@ -182,16 +172,12 @@ data_agent =  prompt | llm
 
 date_node = functools.partial(agent_node, agent=data_agent, name="date_finder")
 
-"""
-Tool Nodes
-"""
+# Tool Node
 tools = [emb_finder]
 tool_node = ToolNode(tools)
 
 
-"""
-Embedding Node
-"""
+# Embedding Node
 prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -207,7 +193,7 @@ prompt = ChatPromptTemplate.from_messages(
 prompt = prompt.partial(tool_names=", ".join([tool.name for tool in tools]))
 chart_agent =  prompt | llm.bind_tools(tools)
 
-chart_node = functools.partial(agent_node, agent=chart_agent, name="chart_generator")
+chart_node = functools.partial(agent_node, agent=chart_agent, name="embedding_retriever")
 
 
 """
@@ -233,16 +219,16 @@ def router(state) -> Literal["call_tool", "__end__", "continue"]:
 workflow = StateGraph(AgentState)
 
 workflow.add_node("date_finder", date_node)
-workflow.add_node("chart_generator", chart_node)
+workflow.add_node("embedding_retriever", chart_node)
 workflow.add_node("call_tool", tool_node)
 
 workflow.add_conditional_edges(
     "date_finder",
     router,
-    {"continue": "chart_generator", "call_tool": "call_tool", "__end__": END},
+    {"continue": "embedding_retriever", "call_tool": "call_tool", "__end__": END},
 )
 workflow.add_conditional_edges(
-    "chart_generator",
+    "embedding_retriever",
     router,
     {"continue": END, "call_tool": "call_tool", "__end__": END},
 )
@@ -261,7 +247,7 @@ graph = workflow.compile()
 
 def extract_content_and_urls(value: Dict[str, Any]) -> List[Dict[str, Union[str, Dict[str, str]]]]:
     result = []
-    possible_keys = ['call_tool', 'date_finder', 'chart_generator']
+    possible_keys = ['call_tool', 'date_finder', 'embedding_retriever']
 
     for key in possible_keys:
         if key in value:
@@ -285,6 +271,7 @@ def extract_content_and_urls(value: Dict[str, Any]) -> List[Dict[str, Union[str,
             break  # Stop after finding the first valid key
     return result
 
+
 """
     Fast API with langserve
 """
@@ -298,35 +285,29 @@ api_handler = APIHandler(graph, path="/api/v1")
 
 
 @app.post("/api/v1/invoke", include_in_schema=False)
-def simple_invoke(request: Request) -> Response:
+async def simple_invoke(request: Request) -> JSONResponse:
     """Handle a request."""
     # The API Handler validates the parts of the request
     # that are used by the runnnable (e.g., input, config fields)
-    print("!")
-    print(request.body)
+    body = await request.json()
+    msg = body["input"]
     events = graph.stream(
         {
             "messages": [
                 HumanMessage(
-                    content="what topic wre they talking about yesterday?"
+                    content=msg
                 )
             ],
-        },
-        # Maximum number of steps to take in the graph
-        {"recursion_limit": 5},
+        }
     )
 
     last_event = None
     for event in events:
         last_event = event
 
-    return extract_content_and_urls(last_event)
+    response = extract_content_and_urls(last_event)
+    return JSONResponse(content=response)
 
-
-# test
-# print("TEST")
-# print(chain.invoke({"input": {"question": "what do you know about harrison", "chat_history": []}}))
-# print(conversational_qa_chain)
 
 if __name__ == "__main__":
     import uvicorn

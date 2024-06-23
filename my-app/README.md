@@ -2,8 +2,7 @@
 
 ### 서버 실행 후 클라이언트 요청
 ```shell
-curl -X POST http://localhost:8080/invoke -H "Content-Type: application/json" -d '{"input": {"question": "why did Sue and Terry exciting", "chat_history": []}}'
-curl -X POST http://localhost:8080/invoke -H "Content-Type: application/json" -d '{"input": {"question": "수현이 무슨 옷을 하려고 했지", "chat_history": []}}'
+curl -X POST http://localhost:8080/api/v1/invoke -H "Content-Type: application/json" -d '{"input": "who are the speakers of the talk yesterday?"}'
 ```
 
 
