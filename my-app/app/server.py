@@ -1,12 +1,13 @@
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from langchain_core.messages import HumanMessage
 
-from langserve import add_routes, APIHandler
+from langserve import APIHandler
 
 from app.graph import graph
 from app.utils import extract_content_and_urls
+from app.db import select_all
 
 """
     Fast API with langserve
@@ -21,7 +22,7 @@ api_handler = APIHandler(graph, path="/api/v1")
 
 
 @app.post("/api/v1/invoke", include_in_schema=False)
-async def simple_invoke(request: Request) -> JSONResponse:
+async def invoke(request: Request) -> JSONResponse:
     """Handle a request."""
     # The API Handler validates the parts of the request
     # that are used by the runnnable (e.g., input, config fields)
