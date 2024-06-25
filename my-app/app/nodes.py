@@ -43,7 +43,7 @@ prompt = ChatPromptTemplate.from_messages(
             MessagesPlaceholder(variable_name="messages"),
         ]
     )
-prompt = prompt.partial(system_message=f"The current date is {current_date}. If the question does not have any clue about date, use the current date. If the question has a clue about date, find all the related dates from the list {file_list}. For example, If current date is '2023-08-23' and question indicating this year, you have to answer with all the date list with 2023, like [2023-01-15.txt, 2023-02-11.txt, 2023-05-19.txt ...]")
+prompt = prompt.partial(system_message=f"The current date is {current_date}. If the question does not have any clue about date, use the current date. If the question has a clue about date, find all the related dates from the list {file_list}. For example, If current date is '2023-08-23' and question indicating this year, you have to answer with all the date list with 2023, like [2023-01-15_cidc598c830.txt, 2023-02-11_cidc523c830.txt, 2023-05-19_cidc598c8ab.txt ...]")
 data_agent = prompt | llm
 
 date_node = functools.partial(agent_node, agent=data_agent, name="date_finder")

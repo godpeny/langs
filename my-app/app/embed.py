@@ -23,7 +23,5 @@ def save_embed(name, store):
 
 
 def load_embed(name):
-    if name.endswith(".txt"):
-        name = name[:-4]
     store = FAISS.load_local(f"app/data/embeddings/${name}.faiss", emb, allow_dangerous_deserialization=True)
     return store

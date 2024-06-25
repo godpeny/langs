@@ -11,19 +11,23 @@ from langchain_core.tools import tool
 
 from langserve.pydantic_v1 import BaseModel
 
-from app.llms import llm, emb
-from app.embed import embed, save_embed, load_embed
+from app.llms import llm
+from app.embed import load_embed
 
 # template
 _TEMPLATE = """Given the following conversation and a follow up question, rephrase the 
 follow up question to be a standalone question, in its original language.
+also, remember to pass chat id to the next agent.
 Follow Up Input: {question}
+Chat ID(chat_id) : {chat_id}
 Standalone question:"""
 CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_TEMPLATE)
 
-ANSWER_TEMPLATE = """Answer the question based only on the following context:
+ANSWER_TEMPLATE = """Answer the question based only on the following context. Please put this 'chat_id' in the answer as prefix. 
+For example, if the 'chat_id' is 'cidc598a120', the answer should be format of 'cidc598a120: ANSWER':
 {context}
 
+Chat ID(chat_id) : {chat_id}
 Question: {question}
 """
 ANSWER_PROMPT = ChatPromptTemplate.from_template(ANSWER_TEMPLATE)
@@ -42,6 +46,7 @@ def _combine_documents(
 class ChatHistory(BaseModel):
     """Chat history with the bot."""
     question: str
+    chat_id: str
 
 
 @tool
@@ -52,32 +57,38 @@ def emb_finder(
     you should print it out with `print(...)`. This is visible to the user."""
 
     try:
-        # message : [2023-08-23.txt]:::(what happen last year?)
+        # message : [2023-08-23_cidc598a120.txt]:::(what happen last year?)
         # Step 1 : Separating message with date and question
-        date_str, question = message.split(":::")
+        index_name, question = message.split(":::")
         # Step 2: Remove the brackets around the dates
-        date_str = date_str.strip("[]")
+        index_name_str = index_name.strip("[]")
         # Step 3: Convert the string of dates to a list
-        date_list = date_str.split(", ")
+        index_name_str_list = index_name_str.split(", ")
         question = question.strip("()")
 
-        for date in date_list:
+        answer_list = ""
+        for index_name_str in index_name_str_list:
             # vector store of chat history.
-            date = date.strip("''")
-            print("!! date !!", date)
-            loaded_vectorstore = load_embed(date)
+            index_name_str = index_name_str.strip("''") # name : 2023-08-23_cidc598a120.txt
+            if index_name_str.endswith(".txt"):
+                index_name_str = index_name_str[:-4]
+            index, cid = index_name_str.split("_")
+            print("@@")
+            print(index, cid)
+            loaded_vectorstore = load_embed(index_name_str)
             retriever = loaded_vectorstore.as_retriever(search_type="mmr")
 
+            input_generator = RunnablePassthrough.assign() | CONDENSE_QUESTION_PROMPT | llm | StrOutputParser()
+
             _inputs = RunnableMap(
-                standalone_question=RunnablePassthrough.assign()
-                                    | CONDENSE_QUESTION_PROMPT
-                                    | llm
-                                    | StrOutputParser(),
+                standalone_question=input_generator,
+                chat_id = input_generator,
             )
 
             _context = {
                 "context": itemgetter("standalone_question") | retriever | _combine_documents,
                 "question": lambda x: x["standalone_question"],
+                "chat_id": lambda x: x["chat_id"],
             }
 
             conversational_qa_chain = (
@@ -85,8 +96,9 @@ def emb_finder(
             )
 
             chain = conversational_qa_chain.with_types(input_type=ChatHistory)
-            return chain.invoke({f"question": {question}})
-
+            answer = chain.invoke({f"question": {question}, f"chat_id": {cid}})
+            answer_list += answer + "\n"
+        return answer_list
     except BaseException as e:
         return f"Failed to execute. Error: {repr(e)}"
     return (

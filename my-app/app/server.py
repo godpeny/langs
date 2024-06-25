@@ -43,19 +43,27 @@ async def request_invoke(request: Request) -> JSONResponse:
 
     last_event = None
     for event in events:
+        print("!")
+        print(event)
         last_event = event
 
     response = extract_content_and_urls(last_event)
     return JSONResponse(content=response)
 
+
 @app.post("/api/v1/embed", include_in_schema=False)
-def request_embed(request: Request) -> JSONResponse:
+async def request_embed(request: Request) -> JSONResponse:
     """Handle a request."""
     # The API Handler validates the parts of the request
     # that are used by the runnnable (e.g., input, config fields)
+    body = await request.json()
+
     dir = "app/data"
-    # list all txt files
-    file_list = [f for f in os.listdir(dir) if f.endswith('.txt')]
+    # check body["condition"] exists
+    if "condition" in body:
+        file_list = [f for f in os.listdir(dir) if f.endswith('.txt') and body["condition"] in f]
+    else:
+        file_list = [f for f in os.listdir(dir) if f.endswith('.txt')]
 
     # save embedding using save_embed function
     for file in file_list:
