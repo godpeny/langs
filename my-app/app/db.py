@@ -4,13 +4,14 @@ import mysql.connector
 """
     DB
 """
-mydb = mysql.connector.connect(
-    host="0.0.0.0",
-    user="root",
-    passwd="toor",
-    database="db"
-)
 
+# mydb = mysql.connector.connect(
+#     host="0.0.0.0",
+#     user="root",
+#     passwd="toor",
+#     database="db"
+# )
+#
 
 def select_all():
 

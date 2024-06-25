@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -7,6 +9,7 @@ from langserve import APIHandler
 
 from app.graph import graph
 from app.utils import extract_content_and_urls
+from app.embed import embed, save_embed
 from app.db import select_all
 
 """
@@ -22,7 +25,7 @@ api_handler = APIHandler(graph, path="/api/v1")
 
 
 @app.post("/api/v1/invoke", include_in_schema=False)
-async def invoke(request: Request) -> JSONResponse:
+async def request_invoke(request: Request) -> JSONResponse:
     """Handle a request."""
     # The API Handler validates the parts of the request
     # that are used by the runnnable (e.g., input, config fields)
@@ -44,6 +47,22 @@ async def invoke(request: Request) -> JSONResponse:
 
     response = extract_content_and_urls(last_event)
     return JSONResponse(content=response)
+
+@app.post("/api/v1/embed", include_in_schema=False)
+def request_embed(request: Request) -> JSONResponse:
+    """Handle a request."""
+    # The API Handler validates the parts of the request
+    # that are used by the runnnable (e.g., input, config fields)
+    dir = "app/data"
+    # list all txt files
+    file_list = [f for f in os.listdir(dir) if f.endswith('.txt')]
+
+    # save embedding using save_embed function
+    for file in file_list:
+        vectorstore = embed(file)
+        save_embed(file, vectorstore)
+
+    return JSONResponse(content=file_list)
 
 
 if __name__ == "__main__":

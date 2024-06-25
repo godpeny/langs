@@ -11,7 +11,8 @@ from langchain_core.tools import tool
 
 from langserve.pydantic_v1 import BaseModel
 
-from app.llms import llm,emb
+from app.llms import llm, emb
+from app.embed import embed, save_embed, load_embed
 
 # template
 _TEMPLATE = """Given the following conversation and a follow up question, rephrase the 
@@ -43,15 +44,6 @@ class ChatHistory(BaseModel):
     question: str
 
 
-def vector_store(path):
-    raw_documents = TextLoader(path).load()
-    text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=0)
-    documents = text_splitter.split_documents(raw_documents)
-    store = FAISS.from_documents(documents, emb)
-
-    return store
-
-
 @tool
 def emb_finder(
         message: Annotated[str, "The python code to execute to generate your chart."],
@@ -72,9 +64,9 @@ def emb_finder(
         for date in date_list:
             # vector store of chat history.
             date = date.strip("''")
-            chat_db_path = f"./app/data/{date}"
-            vectorstore = vector_store(chat_db_path)
-            retriever = vectorstore.as_retriever(search_type="mmr")
+            print("!! date !!", date)
+            loaded_vectorstore = load_embed(date)
+            retriever = loaded_vectorstore.as_retriever(search_type="mmr")
 
             _inputs = RunnableMap(
                 standalone_question=RunnablePassthrough.assign()
