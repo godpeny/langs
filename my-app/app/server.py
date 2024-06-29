@@ -43,8 +43,6 @@ async def request_invoke(request: Request) -> JSONResponse:
 
     last_event = None
     for event in events:
-        print("!")
-        print(event)
         last_event = event
 
     response = extract_content_and_urls(last_event)

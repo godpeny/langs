@@ -73,8 +73,6 @@ def emb_finder(
             if index_name_str.endswith(".txt"):
                 index_name_str = index_name_str[:-4]
             index, cid = index_name_str.split("_")
-            print("@@")
-            print(index, cid)
             loaded_vectorstore = load_embed(index_name_str)
             retriever = loaded_vectorstore.as_retriever(search_type="mmr")
 
